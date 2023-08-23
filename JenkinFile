@@ -1,0 +1,51 @@
+pipeline{
+agent any
+
+tools{
+maven 'maven3.9.3'
+}
+
+triggers {
+  pollSCM 'H */4 * * 1-5'
+}
+
+options {
+  timestamps()
+}
+
+stages{
+    //get the code from github
+    stage('CheckoutCode'){
+    steps{
+     git branch: 'master', credentialsId: '72f3fd61-4ced-46e1-b45a-486a061163a4', url: 'https://github.com/Jyothik14/maven-web-application.git'
+    }
+    }
+    //do the build
+    stage('Build'){
+    steps{ 
+    sh "mvn clean package"
+    }
+    }
+    //Execute SonarQube Report
+    stage('SonarQubeReport'){
+    steps{
+    sh "mvn clean sonar:sonar"
+    }
+    }
+    //Upload Aritfact Into Nexus Server
+    stage('UploadArtifactIntoNexusServer'){
+    steps{
+    sh "mvn clean deploy"
+    }
+    }
+    //Deploy App Into Tomcat Server
+    stage('DeployAppIntoTomacatServer'){
+    steps{
+    sshagent(['643c67da-b822-4e15-9969-cca65cad483b']) {
+     sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@50.16.124.99:/opt/apache-tomcat-9.0.78/webapps/"
+    }
+
+    }
+    }
+ }//stages closing
+}//pipeline closing
